@@ -34,6 +34,7 @@ function PlannerInner() {
     start: "17:00",
     end: "17:45"
   });
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
 
   const selectedSubject = data.subjects[selectedSubjectId];
   const overall = overallPreparedness(data);
@@ -122,6 +123,24 @@ function PlannerInner() {
                   </div>
                 ))}
             </div>
+
+            <h3>Subject progress graph</h3>
+            <div className="subjectGraphList">
+              {subjects.map((subject) => {
+                const progress = subjectPreparedness(subject, data);
+                return (
+                  <div key={subject.id} className="subjectGraphCard">
+                    <div className="row between">
+                      <strong>{subject.name}</strong>
+                      <span>{progress}%</span>
+                    </div>
+                    <div className="progressTrack">
+                      <div className="progressFill" style={{ width: `${progress}%`, background: subject.color }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         )}
 
@@ -181,8 +200,21 @@ function PlannerInner() {
                       <div className="small">{new Date(session.startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - {new Date(session.endAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                     </div>
                     <div className="row">
-                      <input type="time" value={session.startAt.slice(11, 16)} onChange={(e) => updateSession(session.id, { startAt: new Date(`${selectedDate}T${e.target.value}`).toISOString() })} />
-                      <input type="time" value={session.endAt.slice(11, 16)} onChange={(e) => updateSession(session.id, { endAt: new Date(`${selectedDate}T${e.target.value}`).toISOString() })} />
+                      {editingSessionId === session.id ? (
+                        <>
+                          <label className="inlineLabel">
+                            Start
+                            <input type="time" value={session.startAt.slice(11, 16)} onChange={(e) => updateSession(session.id, { startAt: new Date(`${selectedDate}T${e.target.value}`).toISOString() })} />
+                          </label>
+                          <label className="inlineLabel">
+                            End
+                            <input type="time" value={session.endAt.slice(11, 16)} onChange={(e) => updateSession(session.id, { endAt: new Date(`${selectedDate}T${e.target.value}`).toISOString() })} />
+                          </label>
+                          <button onClick={() => setEditingSessionId(null)}>Done</button>
+                        </>
+                      ) : (
+                        <button onClick={() => setEditingSessionId(session.id)}>Edit time</button>
+                      )}
                       <button onClick={() => {
                         const confidence = Number(prompt("Confidence (1-5)", "3") || "3") as 1|2|3|4|5;
                         const notes = prompt("Notes", "") || "";
