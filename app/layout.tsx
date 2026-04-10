@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "IGCSE French Oral Coach",
-  description: "ChatGPT-style French speaking practice with text and realtime voice."
+  title: "aiIGCSE Revision Planner",
+  description: "Interactive revision planner, timer, calendar and preparedness tracker"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

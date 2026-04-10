@@ -1,12 +1,11 @@
 {
-  "name": "igcse-french-oral-coach",
-  "version": "0.2.0",
+  "name": "aiigcse-revision-planner",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
     "next": "^16.2.3",

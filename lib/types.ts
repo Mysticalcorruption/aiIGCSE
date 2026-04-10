@@ -1,43 +1,38 @@
-export type TopicKey =
-  | "home-abroad"
-  | "education-employment"
-  | "personal-life"
-  | "world-around-us"
-  | "social-fitness-health";
-
-export type TenseBucket = "present" | "past" | "future" | "conditional";
-
-export type TaskType = "task-a" | "task-bc";
-
-export type QuestionItem = {
+export type Topic = {
   id: string;
-  topic: TopicKey;
+  name: string;
+  completed: boolean;
+  confidence: number;
+  minutesStudied: number;
+};
+
+export type Subject = {
+  id: string;
+  name: string;
+  color: string;
+  targetMinutes: number;
+  topics: Topic[];
+};
+
+export type StudySession = {
+  id: string;
+  subjectId: string;
+  topicId?: string;
+  durationMinutes: number;
+  createdAt: string;
+};
+
+export type DayPlanItem = {
+  id: string;
+  dayKey: string;
   title: string;
-  subtopic: string;
-  tense: TenseBucket;
-  promptFr: string;
+  subjectId: string;
+  durationMinutes: number;
+  done: boolean;
 };
 
-export type GradeCriterion = {
-  criterion: string;
-  score: number;
-  max: number;
+export type PlannerState = {
+  subjects: Subject[];
+  sessions: StudySession[];
+  planItems: DayPlanItem[];
 };
-
-export type GradeResult = {
-  total: number;
-  breakdown: GradeCriterion[];
-  strengths: string[];
-  targets: string[];
-  evidence: string[];
-};
-
-export type ChatMessage = {
-  id: string;
-  role: "assistant" | "user" | "system";
-  text: string;
-  source?: "typed" | "voice";
-  createdAt: number;
-};
-
-export type TurnMode = "manual" | "server_vad" | "semantic_vad";

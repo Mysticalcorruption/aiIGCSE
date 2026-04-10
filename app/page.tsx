@@ -1,5 +1,5 @@
-import VoiceCoachApp from "@/components/VoiceCoachApp";
+import RevisionPlannerApp from "@/components/RevisionPlannerApp";
 
 export default function Page() {
-  return <VoiceCoachApp />;
+  return <RevisionPlannerApp />;
 }
