@@ -50,6 +50,12 @@ function PlannerInner() {
 
   const topicsForSubject = form.subjectId ? data.subjects[form.subjectId]?.topicIds.map((id) => data.topics[id]).filter(Boolean) || [] : [];
   const subtopicsForTopic = form.topicId ? data.topics[form.topicId]?.subtopicIds.map((id) => data.subtopics[id]).filter(Boolean) || [] : [];
+  const graphData = subjects.map((subject) => ({
+    id: subject.id,
+    name: subject.name,
+    color: subject.color,
+    progress: subjectPreparedness(subject, data)
+  }));
 
   function addAppointment() {
     if (!form.subjectId || !form.topicId || !form.subtopicId) {
@@ -125,21 +131,33 @@ function PlannerInner() {
             </div>
 
             <h3>Subject progress graph</h3>
-            <div className="subjectGraphList">
-              {subjects.map((subject) => {
-                const progress = subjectPreparedness(subject, data);
-                return (
-                  <div key={subject.id} className="subjectGraphCard">
-                    <div className="row between">
-                      <strong>{subject.name}</strong>
-                      <span>{progress}%</span>
-                    </div>
-                    <div className="progressTrack">
-                      <div className="progressFill" style={{ width: `${progress}%`, background: subject.color }} />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="chartCard">
+              <svg viewBox="0 0 620 260" className="progressChart" role="img" aria-label="Subject progress bar chart">
+                <line x1="50" y1="20" x2="50" y2="220" stroke="#94a3b8" strokeWidth="1" />
+                <line x1="50" y1="220" x2="600" y2="220" stroke="#94a3b8" strokeWidth="1" />
+                {[0, 25, 50, 75, 100].map((tick) => {
+                  const y = 220 - tick * 2;
+                  return (
+                    <g key={tick}>
+                      <line x1="45" y1={y} x2="600" y2={y} stroke="#e2e8f0" strokeWidth="1" />
+                      <text x="18" y={y + 4} className="axisLabel">{tick}%</text>
+                    </g>
+                  );
+                })}
+                {graphData.map((item, idx) => {
+                  const width = Math.max(34, Math.floor(460 / Math.max(1, graphData.length)));
+                  const x = 70 + idx * (width + 20);
+                  const height = item.progress * 2;
+                  const y = 220 - height;
+                  return (
+                    <g key={item.id}>
+                      <rect x={x} y={y} width={width} height={height} rx="6" fill={item.color} opacity="0.9" />
+                      <text x={x + width / 2} y={y - 8} textAnchor="middle" className="barValue">{item.progress}%</text>
+                      <text x={x + width / 2} y={240} textAnchor="middle" className="axisLabel">{item.name.slice(0, 10)}</text>
+                    </g>
+                  );
+                })}
+              </svg>
             </div>
           </section>
         )}
