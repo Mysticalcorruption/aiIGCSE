@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PlannerStoreProvider, usePlannerStore } from "@/store/usePlannerStore";
 import { overallPreparedness, subjectPreparedness, subtopicPreparedness } from "@/lib/scoring";
 
-type View = "home" | "calendar" | "subject" | "flashcards";
+type View = "home" | "calendar" | "subject" | "flashcards" | "stackEditor";
 type FlashCard = { id: string; front: string; back: string };
 type FlashStack = { id: string; name: string; cards: FlashCard[] };
 
@@ -43,6 +43,8 @@ function PlannerInner() {
   const [flashStats, setFlashStats] = useState({ correct: 0, incorrect: 0 });
   const [stacks, setStacks] = useState<FlashStack[]>([]);
   const [selectedStackId, setSelectedStackId] = useState<string>("auto");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiCount, setAiCount] = useState(5);
 
   const selectedSubject = data.subjects[selectedSubjectId];
   const overall = overallPreparedness(data);
@@ -136,18 +138,26 @@ function PlannerInner() {
   }
 
   function generateCardsWithAI(stackId: string) {
+    if (!aiPrompt.trim()) {
+      alert("Please enter a prompt for AI card generation.");
+      return;
+    }
+    const keywords = aiPrompt.toLowerCase().split(/\s+/).filter((word) => word.length > 3);
     const source = Object.values(data.subtopics)
-      .filter((sub) => flashSubjectId === "all" || (() => {
-        const topic = Object.values(data.topics).find((t) => t.subtopicIds.includes(sub.id));
-        const subject = topic ? Object.values(data.subjects).find((s) => s.topicIds.includes(topic.id)) : undefined;
-        return subject?.id === flashSubjectId;
-      })())
-      .slice(0, 8);
-    const generated = source.map((sub) => ({
+      .filter((sub) => {
+        const haystack = `${sub.name} ${sub.notes}`.toLowerCase();
+        return keywords.length ? keywords.some((k) => haystack.includes(k)) : true;
+      })
+      .slice(0, Math.max(1, aiCount));
+    const generated = source.map((sub, idx) => ({
       id: Math.random().toString(36).slice(2, 10),
-      front: `Explain: ${sub.name}`,
-      back: sub.notes || `Key idea: ${sub.name}. Add detailed notes for better AI cards.`
+      front: `${idx + 1}. ${aiPrompt}: ${sub.name}`,
+      back: sub.notes || `Key explanation for ${sub.name}. Add notes for richer AI-generated cards.`
     }));
+    if (!generated.length) {
+      alert("No matching content found for that prompt. Try broader keywords.");
+      return;
+    }
     setStacks((prev) => prev.map((stack) => stack.id === stackId ? { ...stack, cards: [...stack.cards, ...generated] } : stack));
   }
 
@@ -181,6 +191,7 @@ function PlannerInner() {
         <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}>Home</button>
         <button className={view === "calendar" ? "active" : ""} onClick={() => setView("calendar")}>Calendar</button>
         <button className={view === "flashcards" ? "active" : ""} onClick={() => setView("flashcards")}>Flashcards</button>
+        <button className={view === "stackEditor" ? "active" : ""} onClick={() => setView("stackEditor")}>Stack editor</button>
 
         <div className="menuTitle">Subjects</div>
         {subjects.map((subject) => (
@@ -378,33 +389,6 @@ function PlannerInner() {
                 </select>
               </label>
             </div>
-            <div className="row">
-              <button onClick={addStack}>+ Add stack</button>
-              {selectedStackId !== "auto" && (
-                <>
-                  <button onClick={() => addCardToStack(selectedStackId)}>+ Add card</button>
-                  <button onClick={() => generateCardsWithAI(selectedStackId)}>🤖 AI generate cards</button>
-                  <button className="danger" onClick={() => removeStack(selectedStackId)}>Delete stack</button>
-                </>
-              )}
-            </div>
-            {selectedStackId !== "auto" && (
-              <div className="stackManager">
-                <h3>Stack editor</h3>
-                {(stacks.find((s) => s.id === selectedStackId)?.cards || []).map((card) => (
-                  <div key={card.id} className="stackCardRow">
-                    <div>
-                      <strong>{card.front}</strong>
-                      <div className="small">{card.back}</div>
-                    </div>
-                    <div className="row">
-                      <button onClick={() => editCard(selectedStackId, card.id)}>Edit</button>
-                      <button className="danger" onClick={() => removeCard(selectedStackId, card.id)}>Remove</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
             {!currentCard ? (
               <p>No flashcards available. Add notes to your sub-topics first.</p>
             ) : (
@@ -426,6 +410,59 @@ function PlannerInner() {
                   }}>❌ Needs work</button>
                 </div>
                 <div className="small">Score: {flashStats.correct} correct • {flashStats.incorrect} needs work</div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {view === "stackEditor" && (
+          <section>
+            <h1>Flashcard stack editor</h1>
+            <p>Create, edit, and delete stacks/cards here. Study them on the Flashcards page.</p>
+            <div className="row">
+              <button onClick={addStack}>+ Add stack</button>
+              {selectedStackId !== "auto" && (
+                <>
+                  <button onClick={() => addCardToStack(selectedStackId)}>+ Add card</button>
+                  <button className="danger" onClick={() => removeStack(selectedStackId)}>Delete stack</button>
+                </>
+              )}
+            </div>
+            <div className="formGrid">
+              <label>
+                Selected stack
+                <select value={selectedStackId} onChange={(e) => setSelectedStackId(e.target.value)}>
+                  <option value="auto">Auto (from sub-topics)</option>
+                  {stacks.map((stack) => <option key={stack.id} value={stack.id}>{stack.name}</option>)}
+                </select>
+              </label>
+              <label>
+                AI prompt
+                <input value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder="e.g. Generate GCSE French vocabulary cards about school and hobbies" />
+              </label>
+              <label>
+                Number of cards
+                <input type="number" min={1} max={20} value={aiCount} onChange={(e) => setAiCount(Number(e.target.value))} />
+              </label>
+            </div>
+            {selectedStackId !== "auto" && <button onClick={() => generateCardsWithAI(selectedStackId)}>🤖 Generate cards from prompt</button>}
+            {selectedStackId === "auto" ? (
+              <p className="small">Select a custom stack to edit cards or use AI generation.</p>
+            ) : (
+              <div className="stackManager">
+                <h3>Cards in stack</h3>
+                {(stacks.find((s) => s.id === selectedStackId)?.cards || []).map((card) => (
+                  <div key={card.id} className="stackCardRow">
+                    <div>
+                      <strong>{card.front}</strong>
+                      <div className="small">{card.back}</div>
+                    </div>
+                    <div className="row">
+                      <button onClick={() => editCard(selectedStackId, card.id)}>Edit</button>
+                      <button className="danger" onClick={() => removeCard(selectedStackId, card.id)}>Remove</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </section>
