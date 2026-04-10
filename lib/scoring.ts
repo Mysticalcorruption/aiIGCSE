@@ -1,32 +1,27 @@
-import { PlannerState } from "@/lib/types";
+import { PlannerData, Subject } from "@/lib/types";
 
-export function getPreparedness(state: PlannerState) {
-  const allTopics = state.subjects.flatMap((s) => s.topics);
-  const completedTopics = allTopics.filter((t) => t.completed).length;
-  const completionScore = allTopics.length ? (completedTopics / allTopics.length) * 50 : 0;
+function clamp(value: number, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, value));
+}
 
-  const totalTarget = state.subjects.reduce((sum, s) => sum + s.targetMinutes, 0);
-  const totalStudied = state.subjects.reduce(
-    (sum, s) => sum + s.topics.reduce((topicSum, t) => topicSum + t.minutesStudied, 0),
-    0
-  );
-  const timeScore = totalTarget ? Math.min(totalStudied / totalTarget, 1) * 25 : 0;
+export function getSubjectPreparedness(subject: Subject): number {
+  const subtopics = subject.topics.flatMap((topic) => topic.subtopics);
+  if (!subtopics.length) return 0;
 
-  const donePlan = state.planItems.filter((p) => p.done).length;
-  const consistencyScore = state.planItems.length ? (donePlan / state.planItems.length) * 15 : 0;
+  const completed = subtopics.filter((item) => item.complete).length / subtopics.length;
+  const confidence = subtopics.reduce((sum, item) => sum + item.confidence, 0) / (subtopics.length * 5);
+  const timeRatio = subtopics.reduce((sum, item) => sum + Math.min(item.minutesStudied / Math.max(item.targetMinutes, 1), 1), 0) / subtopics.length;
 
-  const weakTopics = allTopics.filter((t) => t.confidence < 70);
-  const weaknessRecovery = weakTopics.length
-    ? (weakTopics.reduce((sum, t) => sum + t.confidence, 0) / (weakTopics.length * 100)) * 10
-    : 10;
+  return Math.round(clamp((completed * 0.45 + confidence * 0.25 + timeRatio * 0.30) * 100));
+}
 
-  const total = Math.round(completionScore + timeScore + consistencyScore + weaknessRecovery);
+export function getOverallPreparedness(data: PlannerData): number {
+  if (!data.subjects.length) return 0;
+  const avgSubject = data.subjects.reduce((sum, subject) => sum + getSubjectPreparedness(subject), 0) / data.subjects.length;
+  const completedSessions = data.sessions.length
+    ? data.sessions.filter((s) => s.completed).length / data.sessions.length
+    : 0;
+  const streakBoost = Math.min(data.streak / 7, 1) * 10;
 
-  return {
-    total,
-    completionScore: Math.round(completionScore),
-    timeScore: Math.round(timeScore),
-    consistencyScore: Math.round(consistencyScore),
-    weaknessRecovery: Math.round(weaknessRecovery)
-  };
+  return Math.round(clamp(avgSubject * 0.8 + completedSessions * 10 + streakBoost));
 }

@@ -1,38 +1,40 @@
+export type StudySession = {
+  id: string;
+  subjectId: string;
+  topicId: string;
+  subtopicId: string;
+  title: string;
+  day: string;
+  start: string;
+  end: string;
+  completed: boolean;
+  minutesLogged: number;
+};
+
+export type Subtopic = {
+  id: string;
+  name: string;
+  complete: boolean;
+  confidence: number;
+  targetMinutes: number;
+  minutesStudied: number;
+};
+
 export type Topic = {
   id: string;
   name: string;
-  completed: boolean;
-  confidence: number;
-  minutesStudied: number;
+  subtopics: Subtopic[];
 };
 
 export type Subject = {
   id: string;
   name: string;
   color: string;
-  targetMinutes: number;
   topics: Topic[];
 };
 
-export type StudySession = {
-  id: string;
-  subjectId: string;
-  topicId?: string;
-  durationMinutes: number;
-  createdAt: string;
-};
-
-export type DayPlanItem = {
-  id: string;
-  dayKey: string;
-  title: string;
-  subjectId: string;
-  durationMinutes: number;
-  done: boolean;
-};
-
-export type PlannerState = {
+export type PlannerData = {
   subjects: Subject[];
   sessions: StudySession[];
-  planItems: DayPlanItem[];
+  streak: number;
 };

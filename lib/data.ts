@@ -1,66 +1,78 @@
-import { PlannerState } from "@/lib/types";
+import { PlannerData } from "@/lib/types";
 
-function makeTopics(names: string[]) {
-  return names.map((name, index) => ({
-    id: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${index}`,
-    name,
-    completed: false,
-    confidence: 20,
-    minutesStudied: 0
-  }));
-}
-
-const today = new Date();
-function dayKey(offset: number) {
-  const d = new Date(today);
-  d.setDate(d.getDate() + offset);
-  return d.toISOString().slice(0, 10);
-}
-
-export const defaultState: PlannerState = {
+export const defaultPlannerData: PlannerData = {
+  streak: 4,
   subjects: [
     {
       id: "maths",
       name: "Maths",
-      color: "linear-gradient(135deg, #60a5fa, #2563eb)",
-      targetMinutes: 360,
-      topics: makeTopics(["Algebra", "Geometry", "Quadratics", "Statistics", "Trigonometry"])
+      color: "var(--accent-1)",
+      topics: [
+        {
+          id: "algebra",
+          name: "Algebra",
+          subtopics: [
+            { id: "quadratics", name: "Quadratics", complete: false, confidence: 3, targetMinutes: 120, minutesStudied: 45 },
+            { id: "simultaneous", name: "Simultaneous equations", complete: true, confidence: 4, targetMinutes: 90, minutesStudied: 90 }
+          ]
+        }
+      ]
     },
     {
       id: "biology",
       name: "Biology",
-      color: "linear-gradient(135deg, #4ade80, #16a34a)",
-      targetMinutes: 300,
-      topics: makeTopics(["Cells", "Enzymes", "Respiration", "Transport", "Ecology"])
-    },
-    {
-      id: "chemistry",
-      name: "Chemistry",
-      color: "linear-gradient(135deg, #facc15, #f59e0b)",
-      targetMinutes: 300,
-      topics: makeTopics(["Bonding", "Acids and Alkalis", "Rates", "Electrolysis", "Organic Chemistry"])
-    },
-    {
-      id: "physics",
-      name: "Physics",
-      color: "linear-gradient(135deg, #c084fc, #7c3aed)",
-      targetMinutes: 300,
-      topics: makeTopics(["Forces", "Energy", "Electricity", "Waves", "Space Physics"])
+      color: "var(--accent-2)",
+      topics: [
+        {
+          id: "cells",
+          name: "Cells and transport",
+          subtopics: [
+            { id: "osmosis", name: "Osmosis", complete: false, confidence: 2, targetMinutes: 75, minutesStudied: 20 },
+            { id: "diffusion", name: "Diffusion", complete: false, confidence: 4, targetMinutes: 60, minutesStudied: 35 }
+          ]
+        }
+      ]
     },
     {
       id: "french",
       name: "French",
-      color: "linear-gradient(135deg, #fb7185, #e11d48)",
-      targetMinutes: 240,
-      topics: makeTopics(["Speaking", "Reading", "Writing", "Listening", "Vocabulary"])
+      color: "var(--accent-3)",
+      topics: [
+        {
+          id: "speaking",
+          name: "Speaking",
+          subtopics: [
+            { id: "school-topic", name: "School topic", complete: false, confidence: 3, targetMinutes: 80, minutesStudied: 25 },
+            { id: "tenses", name: "Key tenses", complete: false, confidence: 2, targetMinutes: 120, minutesStudied: 30 }
+          ]
+        }
+      ]
     }
   ],
-  sessions: [],
-  planItems: [
-    { id: "1", dayKey: dayKey(0), title: "Algebra practice", subjectId: "maths", durationMinutes: 45, done: false },
-    { id: "2", dayKey: dayKey(0), title: "French vocab review", subjectId: "french", durationMinutes: 30, done: false },
-    { id: "3", dayKey: dayKey(1), title: "Biology enzymes", subjectId: "biology", durationMinutes: 40, done: false },
-    { id: "4", dayKey: dayKey(2), title: "Physics electricity questions", subjectId: "physics", durationMinutes: 50, done: false },
-    { id: "5", dayKey: dayKey(3), title: "Chemistry bonding flashcards", subjectId: "chemistry", durationMinutes: 35, done: false }
+  sessions: [
+    {
+      id: "s1",
+      subjectId: "maths",
+      topicId: "algebra",
+      subtopicId: "quadratics",
+      title: "Maths • Quadratics",
+      day: "Monday",
+      start: "17:00",
+      end: "17:45",
+      completed: false,
+      minutesLogged: 0
+    },
+    {
+      id: "s2",
+      subjectId: "biology",
+      topicId: "cells",
+      subtopicId: "osmosis",
+      title: "Biology • Osmosis",
+      day: "Monday",
+      start: "18:00",
+      end: "18:40",
+      completed: true,
+      minutesLogged: 40
+    }
   ]
 };

@@ -1,6 +1,6 @@
 {
-  "name": "aiigcse-revision-planner",
-  "version": "1.0.0",
+  "name": "aiigcse-revision-planner-v2",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -13,9 +13,9 @@
     "react-dom": "19.0.0"
   },
   "devDependencies": {
-    "@types/node": "20.17.30",
-    "@types/react": "19.0.10",
-    "@types/react-dom": "19.0.4",
-    "typescript": "5.8.3"
+    "@types/node": "^22.15.21",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "typescript": "^5.8.3"
   }
 }

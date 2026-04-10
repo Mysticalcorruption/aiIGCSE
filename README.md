@@ -1,22 +1,22 @@
-# aiIGCSE Revision Planner
+# aiIGCSE Planner v2
 
-A full replacement Next.js app for the previous voicebot project.
-
-## Features
-- Interactive revision dashboard
-- Daily calendar planner
-- Focus timer
-- Topic confidence tracker
-- Preparedness score out of 100%
-- Local browser persistence
-- Vercel-friendly deployment
+Interactive revision planner with:
+- editable subjects
+- topics and sub-topics
+- changeable daily calendar times
+- built-in study timer
+- per-subject preparedness bars
+- overall preparedness ring
+- browser local storage persistence
 
 ## Run locally
+
 ```bash
 npm install
 npm run dev
 ```
 
 ## Deploy
+
 Push to GitHub and import into Vercel.
-No API key is required for this version.
+No API key required.
