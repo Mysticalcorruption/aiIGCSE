@@ -45,6 +45,7 @@ function PlannerInner() {
   const [selectedStackId, setSelectedStackId] = useState<string>("auto");
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiCount, setAiCount] = useState(5);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const selectedSubject = data.subjects[selectedSubjectId];
   const overall = overallPreparedness(data);
@@ -137,31 +138,33 @@ function PlannerInner() {
     setStacks((prev) => prev.map((s) => s.id === stackId ? { ...s, cards: s.cards.filter((c) => c.id !== cardId) } : s));
   }
 
-  function generateCardsWithAI(stackId: string) {
+  async function generateCardsWithAI(stackId: string) {
     if (!aiPrompt.trim()) {
       alert("Please enter a prompt for AI card generation.");
       return;
     }
-    const keywords = aiPrompt.toLowerCase().split(/\s+/).filter((word) => word.length > 2);
-    const allSubtopics = Object.values(data.subtopics);
-    const matched = allSubtopics
-      .filter((sub) => {
-        const haystack = `${sub.name} ${sub.notes}`.toLowerCase();
-        return keywords.length ? keywords.some((k) => haystack.includes(k)) : true;
-      })
-      .slice(0, Math.max(1, aiCount));
-    const source = matched.length ? matched : allSubtopics.slice(0, Math.max(1, aiCount));
-    const generated = source.map((sub, idx) => ({
-      id: Math.random().toString(36).slice(2, 10),
-      front: `${idx + 1}. ${aiPrompt}: ${sub.name}`,
-      back: sub.notes || `Key explanation for ${sub.name}. Add notes for richer AI-generated cards.`
-    }));
-    if (!allSubtopics.length) {
-      alert("No sub-topics available yet. Add subjects/topics/sub-topics first.");
-      return;
+    const context = Object.values(data.subtopics).map((sub) => ({ name: sub.name, notes: sub.notes, difficulty: sub.difficulty }));
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/generate-flashcards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: aiPrompt, cardCount: aiCount, context })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "AI generation failed");
+      }
+      const payload = await res.json() as { cards: Array<{ front: string; back: string }> };
+      const generated = payload.cards.map((card) => ({ ...card, id: Math.random().toString(36).slice(2, 10) }));
+      setStacks((prev) => prev.map((stack) => stack.id === stackId ? { ...stack, cards: [...stack.cards, ...generated] } : stack));
+      if (!generated.length) alert("AI returned no cards. Try a more specific prompt.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "AI generation failed";
+      alert(message);
+    } finally {
+      setAiLoading(false);
     }
-    if (!matched.length) alert("No exact matches found, so I generated cards from your general revision topics instead.");
-    setStacks((prev) => prev.map((stack) => stack.id === stackId ? { ...stack, cards: [...stack.cards, ...generated] } : stack));
   }
 
   function addAppointment() {
@@ -448,7 +451,7 @@ function PlannerInner() {
                 <input type="number" min={1} max={20} value={aiCount} onChange={(e) => setAiCount(Number(e.target.value))} />
               </label>
             </div>
-            {selectedStackId !== "auto" && <button onClick={() => generateCardsWithAI(selectedStackId)}>🤖 Generate cards from prompt</button>}
+            {selectedStackId !== "auto" && <button onClick={() => generateCardsWithAI(selectedStackId)} disabled={aiLoading}>{aiLoading ? "Generating..." : "🤖 Generate cards from prompt"}</button>}
             {selectedStackId === "auto" ? (
               <p className="small">Select a custom stack to edit cards or use AI generation.</p>
             ) : (
