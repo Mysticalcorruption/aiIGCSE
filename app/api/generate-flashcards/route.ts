@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 
 type ContextRow = { name: string; notes: string; difficulty: number };
 
+function localFallbackCards(prompt: string, context: ContextRow[], count: number) {
+  const safeContext = context.slice(0, Math.max(1, count));
+  return safeContext.map((item, i) => ({
+    front: `${i + 1}. ${prompt}: ${item.name}`,
+    back: item.notes || `Review ${item.name} (difficulty ${item.difficulty}/5). Add notes for richer cards.`
+  }));
+}
+
 export async function POST(req: Request) {
   try {
     const { prompt, cardCount, context } = await req.json() as { prompt: string; cardCount: number; context: ContextRow[] };
@@ -37,7 +45,15 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       const raw = await response.text();
-      return NextResponse.json({ error: `OpenAI request failed: ${raw}` }, { status: 500 });
+      const lowered = raw.toLowerCase();
+      if (lowered.includes("insufficient_quota") || lowered.includes("quota")) {
+        const fallback = localFallbackCards(prompt, slicedContext, safeCount);
+        return NextResponse.json({
+          cards: fallback,
+          warning: "OpenAI quota exceeded, so fallback cards were generated locally."
+        });
+      }
+      return NextResponse.json({ error: "OpenAI request failed. Please verify API key, quota, and billing." }, { status: 500 });
     }
 
     const data = await response.json() as { output_text?: string };
