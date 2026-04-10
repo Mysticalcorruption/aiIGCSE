@@ -1,5 +1,5 @@
-import RevisionPlannerApp from "@/components/RevisionPlannerApp";
+import PlannerApp from "@/components/planner/PlannerApp";
 
 export default function Page() {
-  return <RevisionPlannerApp />;
+  return <PlannerApp />;
 }

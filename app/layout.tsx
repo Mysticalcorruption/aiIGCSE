@@ -1,9 +1,8 @@
 import "./globals.css";
-import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "aiIGCSE Planner v2",
-  description: "Interactive revision planner with editable subjects, sub-topics, calendar times, and readiness tracking."
+export const metadata = {
+  title: "AI IGCSE Revision Planner V3",
+  description: "Notion-style GCSE revision planner with calendar + preparedness tracking"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
