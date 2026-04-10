@@ -64,6 +64,8 @@ textarea { min-height: 90px; }
 .topicCard, .subtopicCard { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-top: 10px; background: #fafcff; }
 .flashCard { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: #f8fbff; margin-top: 12px; display: grid; gap: 10px; max-width: 760px; }
 .answerBox { border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 10px; padding: 10px; color: #1e3a8a; }
+.stackManager { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-top: 12px; display: grid; gap: 8px; background: #fff; max-width: 900px; }
+.stackCardRow { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
 @media (max-width: 1100px) {
   .app { grid-template-columns: 1fr; }

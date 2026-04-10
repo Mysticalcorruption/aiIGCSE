@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PlannerStoreProvider, usePlannerStore } from "@/store/usePlannerStore";
 import { overallPreparedness, subjectPreparedness, subtopicPreparedness } from "@/lib/scoring";
 
 type View = "home" | "calendar" | "subject" | "flashcards";
+type FlashCard = { id: string; front: string; back: string };
+type FlashStack = { id: string; name: string; cards: FlashCard[] };
 
 function PlannerInner() {
   const {
@@ -39,6 +41,8 @@ function PlannerInner() {
   const [flashIndex, setFlashIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [flashStats, setFlashStats] = useState({ correct: 0, incorrect: 0 });
+  const [stacks, setStacks] = useState<FlashStack[]>([]);
+  const [selectedStackId, setSelectedStackId] = useState<string>("auto");
 
   const selectedSubject = data.subjects[selectedSubjectId];
   const overall = overallPreparedness(data);
@@ -61,6 +65,10 @@ function PlannerInner() {
     progress: subjectPreparedness(subject, data)
   }));
   const flashcards = useMemo(() => {
+    if (selectedStackId !== "auto") {
+      const stack = stacks.find((item) => item.id === selectedStackId);
+      return (stack?.cards || []).map((card) => ({ id: card.id, subject: stack?.name || "Stack", question: card.front, answer: card.back }));
+    }
     const allowedSubjectIds = flashSubjectId === "all" ? new Set(subjects.map((s) => s.id)) : new Set([flashSubjectId]);
     return Object.values(data.subtopics)
       .map((subtopic) => {
@@ -76,8 +84,72 @@ function PlannerInner() {
           : null;
       })
       .filter((item): item is { id: string; subject: string; question: string; answer: string } => Boolean(item));
-  }, [data.subtopics, data.subjects, data.topics, flashSubjectId, subjects]);
+  }, [data.subtopics, data.subjects, data.topics, flashSubjectId, subjects, selectedStackId, stacks]);
   const currentCard = flashcards[flashIndex];
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("ai-igcse-stacks-v1");
+      if (raw) setStacks(JSON.parse(raw) as FlashStack[]);
+    } catch {
+      setStacks([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("ai-igcse-stacks-v1", JSON.stringify(stacks));
+  }, [stacks]);
+
+  function addStack() {
+    const name = prompt("Stack name", "New Stack");
+    if (!name) return;
+    const id = Math.random().toString(36).slice(2, 10);
+    setStacks((prev) => [...prev, { id, name, cards: [] }]);
+    setSelectedStackId(id);
+  }
+
+  function removeStack(id: string) {
+    if (!confirm("Delete this stack and all its cards?")) return;
+    setStacks((prev) => prev.filter((stack) => stack.id !== id));
+    setSelectedStackId("auto");
+  }
+
+  function addCardToStack(stackId: string) {
+    const front = prompt("Card front / question", "");
+    if (!front) return;
+    const back = prompt("Card back / answer", "") || "";
+    setStacks((prev) => prev.map((stack) => stack.id === stackId ? { ...stack, cards: [...stack.cards, { id: Math.random().toString(36).slice(2, 10), front, back }] } : stack));
+  }
+
+  function editCard(stackId: string, cardId: string) {
+    const stack = stacks.find((s) => s.id === stackId);
+    const card = stack?.cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const front = prompt("Edit front", card.front);
+    if (!front) return;
+    const back = prompt("Edit back", card.back) || "";
+    setStacks((prev) => prev.map((s) => s.id === stackId ? { ...s, cards: s.cards.map((c) => c.id === cardId ? { ...c, front, back } : c) } : s));
+  }
+
+  function removeCard(stackId: string, cardId: string) {
+    setStacks((prev) => prev.map((s) => s.id === stackId ? { ...s, cards: s.cards.filter((c) => c.id !== cardId) } : s));
+  }
+
+  function generateCardsWithAI(stackId: string) {
+    const source = Object.values(data.subtopics)
+      .filter((sub) => flashSubjectId === "all" || (() => {
+        const topic = Object.values(data.topics).find((t) => t.subtopicIds.includes(sub.id));
+        const subject = topic ? Object.values(data.subjects).find((s) => s.topicIds.includes(topic.id)) : undefined;
+        return subject?.id === flashSubjectId;
+      })())
+      .slice(0, 8);
+    const generated = source.map((sub) => ({
+      id: Math.random().toString(36).slice(2, 10),
+      front: `Explain: ${sub.name}`,
+      back: sub.notes || `Key idea: ${sub.name}. Add detailed notes for better AI cards.`
+    }));
+    setStacks((prev) => prev.map((stack) => stack.id === stackId ? { ...stack, cards: [...stack.cards, ...generated] } : stack));
+  }
 
   function addAppointment() {
     if (!form.subjectId || !form.topicId || !form.subtopicId) {
@@ -291,7 +363,48 @@ function PlannerInner() {
                   {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
                 </select>
               </label>
+              <label>
+                Card source
+                <select
+                  value={selectedStackId}
+                  onChange={(e) => {
+                    setSelectedStackId(e.target.value);
+                    setFlashIndex(0);
+                    setShowAnswer(false);
+                  }}
+                >
+                  <option value="auto">Auto (from sub-topics)</option>
+                  {stacks.map((stack) => <option key={stack.id} value={stack.id}>{stack.name}</option>)}
+                </select>
+              </label>
             </div>
+            <div className="row">
+              <button onClick={addStack}>+ Add stack</button>
+              {selectedStackId !== "auto" && (
+                <>
+                  <button onClick={() => addCardToStack(selectedStackId)}>+ Add card</button>
+                  <button onClick={() => generateCardsWithAI(selectedStackId)}>🤖 AI generate cards</button>
+                  <button className="danger" onClick={() => removeStack(selectedStackId)}>Delete stack</button>
+                </>
+              )}
+            </div>
+            {selectedStackId !== "auto" && (
+              <div className="stackManager">
+                <h3>Stack editor</h3>
+                {(stacks.find((s) => s.id === selectedStackId)?.cards || []).map((card) => (
+                  <div key={card.id} className="stackCardRow">
+                    <div>
+                      <strong>{card.front}</strong>
+                      <div className="small">{card.back}</div>
+                    </div>
+                    <div className="row">
+                      <button onClick={() => editCard(selectedStackId, card.id)}>Edit</button>
+                      <button className="danger" onClick={() => removeCard(selectedStackId, card.id)}>Remove</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             {!currentCard ? (
               <p>No flashcards available. Add notes to your sub-topics first.</p>
             ) : (
