@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { PlannerStoreProvider, usePlannerStore } from "@/store/usePlannerStore";
 import { overallPreparedness, subjectPreparedness, subtopicPreparedness } from "@/lib/scoring";
 
-type View = "home" | "calendar" | "subject";
+type View = "home" | "calendar" | "subject" | "flashcards";
 
 function PlannerInner() {
   const {
@@ -35,6 +35,10 @@ function PlannerInner() {
     end: "17:45"
   });
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [flashSubjectId, setFlashSubjectId] = useState<string>("all");
+  const [flashIndex, setFlashIndex] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [flashStats, setFlashStats] = useState({ correct: 0, incorrect: 0 });
 
   const selectedSubject = data.subjects[selectedSubjectId];
   const overall = overallPreparedness(data);
@@ -56,6 +60,24 @@ function PlannerInner() {
     color: subject.color,
     progress: subjectPreparedness(subject, data)
   }));
+  const flashcards = useMemo(() => {
+    const allowedSubjectIds = flashSubjectId === "all" ? new Set(subjects.map((s) => s.id)) : new Set([flashSubjectId]);
+    return Object.values(data.subtopics)
+      .map((subtopic) => {
+        const topic = Object.values(data.topics).find((t) => t.subtopicIds.includes(subtopic.id));
+        const subject = topic ? Object.values(data.subjects).find((s) => s.topicIds.includes(topic.id)) : undefined;
+        return subject && allowedSubjectIds.has(subject.id)
+          ? {
+              id: subtopic.id,
+              subject: subject.name,
+              question: subtopic.name,
+              answer: subtopic.notes || "No notes yet. Add notes to use this as revision content."
+            }
+          : null;
+      })
+      .filter((item): item is { id: string; subject: string; question: string; answer: string } => Boolean(item));
+  }, [data.subtopics, data.subjects, data.topics, flashSubjectId, subjects]);
+  const currentCard = flashcards[flashIndex];
 
   function addAppointment() {
     if (!form.subjectId || !form.topicId || !form.subtopicId) {
@@ -86,6 +108,7 @@ function PlannerInner() {
         <h2>AI IGCSE Planner</h2>
         <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}>Home</button>
         <button className={view === "calendar" ? "active" : ""} onClick={() => setView("calendar")}>Calendar</button>
+        <button className={view === "flashcards" ? "active" : ""} onClick={() => setView("flashcards")}>Flashcards</button>
 
         <div className="menuTitle">Subjects</div>
         {subjects.map((subject) => (
@@ -245,6 +268,53 @@ function PlannerInner() {
               })}
               {!sessionsForDate.length && <p>No appointments yet for this date.</p>}
             </div>
+          </section>
+        )}
+
+        {view === "flashcards" && (
+          <section>
+            <h1>Flashcards / Self-test</h1>
+            <p>Test yourself on vocabulary and key notes from your sub-topics.</p>
+            <div className="formGrid">
+              <label>
+                Subject filter
+                <select
+                  value={flashSubjectId}
+                  onChange={(e) => {
+                    setFlashSubjectId(e.target.value);
+                    setFlashIndex(0);
+                    setShowAnswer(false);
+                    setFlashStats({ correct: 0, incorrect: 0 });
+                  }}
+                >
+                  <option value="all">All subjects</option>
+                  {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+                </select>
+              </label>
+            </div>
+            {!currentCard ? (
+              <p>No flashcards available. Add notes to your sub-topics first.</p>
+            ) : (
+              <div className="flashCard">
+                <div className="small">{currentCard.subject} • Card {flashIndex + 1} / {flashcards.length}</div>
+                <h3>{currentCard.question}</h3>
+                {showAnswer ? <p className="answerBox">{currentCard.answer}</p> : <p className="small">Think first, then reveal the answer.</p>}
+                <div className="row">
+                  <button onClick={() => setShowAnswer((v) => !v)}>{showAnswer ? "Hide answer" : "Show answer"}</button>
+                  <button onClick={() => {
+                    setFlashStats((s) => ({ ...s, correct: s.correct + 1 }));
+                    setShowAnswer(false);
+                    setFlashIndex((i) => (i + 1) % flashcards.length);
+                  }}>✅ I got it</button>
+                  <button className="danger" onClick={() => {
+                    setFlashStats((s) => ({ ...s, incorrect: s.incorrect + 1 }));
+                    setShowAnswer(false);
+                    setFlashIndex((i) => (i + 1) % flashcards.length);
+                  }}>❌ Needs work</button>
+                </div>
+                <div className="small">Score: {flashStats.correct} correct • {flashStats.incorrect} needs work</div>
+              </div>
+            )}
           </section>
         )}
 
