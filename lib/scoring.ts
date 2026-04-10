@@ -1,27 +1,28 @@
-import { PlannerData, Subject } from "@/lib/types";
+import { PlannerData, Subject, Subtopic } from "@/types/planner";
 
-function clamp(value: number, min = 0, max = 100) {
-  return Math.max(min, Math.min(max, value));
+const clamp = (n: number, min = 0, max = 1) => Math.max(min, Math.min(max, n));
+
+export function subtopicPreparedness(subtopic: Subtopic, now = new Date()): number {
+  const target = Math.max(subtopic.targetMinutes, 1);
+  const base = 1 - Math.exp(-subtopic.timeSpentMinutes / target);
+  const confidenceMultiplier = 0.7 + (subtopic.confidence / 5) * 0.4;
+  const daysSince = subtopic.lastStudiedAt ? Math.max(0, (now.getTime() - new Date(subtopic.lastStudiedAt).getTime()) / (1000 * 60 * 60 * 24)) : 120;
+  const decay = Math.exp(-daysSince / 21);
+  return clamp(base * confidenceMultiplier * decay);
 }
 
-export function getSubjectPreparedness(subject: Subject): number {
-  const subtopics = subject.topics.flatMap((topic) => topic.subtopics);
-  if (!subtopics.length) return 0;
-
-  const completed = subtopics.filter((item) => item.complete).length / subtopics.length;
-  const confidence = subtopics.reduce((sum, item) => sum + item.confidence, 0) / (subtopics.length * 5);
-  const timeRatio = subtopics.reduce((sum, item) => sum + Math.min(item.minutesStudied / Math.max(item.targetMinutes, 1), 1), 0) / subtopics.length;
-
-  return Math.round(clamp((completed * 0.45 + confidence * 0.25 + timeRatio * 0.30) * 100));
+export function subjectPreparedness(subject: Subject, data: PlannerData): number {
+  const items = subject.topicIds.flatMap((topicId) => data.topics[topicId]?.subtopicIds || []).map((id) => data.subtopics[id]).filter(Boolean);
+  if (!items.length) return 0;
+  const weighted = items.reduce((sum, s) => sum + subtopicPreparedness(s) * Math.max(1, s.targetMinutes / 60), 0);
+  const weight = items.reduce((sum, s) => sum + Math.max(1, s.targetMinutes / 60), 0);
+  return Math.round((weighted / weight) * 100);
 }
 
-export function getOverallPreparedness(data: PlannerData): number {
-  if (!data.subjects.length) return 0;
-  const avgSubject = data.subjects.reduce((sum, subject) => sum + getSubjectPreparedness(subject), 0) / data.subjects.length;
-  const completedSessions = data.sessions.length
-    ? data.sessions.filter((s) => s.completed).length / data.sessions.length
-    : 0;
-  const streakBoost = Math.min(data.streak / 7, 1) * 10;
-
-  return Math.round(clamp(avgSubject * 0.8 + completedSessions * 10 + streakBoost));
+export function overallPreparedness(data: PlannerData): number {
+  const subjects = data.subjectOrder.map((id) => data.subjects[id]).filter(Boolean);
+  if (!subjects.length) return 0;
+  const weighted = subjects.reduce((sum, subject) => sum + subjectPreparedness(subject, data) * Math.max(1, subject.targetStudyHours), 0);
+  const weight = subjects.reduce((sum, subject) => sum + Math.max(1, subject.targetStudyHours), 0);
+  return Math.round(weighted / weight);
 }
