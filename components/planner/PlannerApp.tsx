@@ -142,22 +142,25 @@ function PlannerInner() {
       alert("Please enter a prompt for AI card generation.");
       return;
     }
-    const keywords = aiPrompt.toLowerCase().split(/\s+/).filter((word) => word.length > 3);
-    const source = Object.values(data.subtopics)
+    const keywords = aiPrompt.toLowerCase().split(/\s+/).filter((word) => word.length > 2);
+    const allSubtopics = Object.values(data.subtopics);
+    const matched = allSubtopics
       .filter((sub) => {
         const haystack = `${sub.name} ${sub.notes}`.toLowerCase();
         return keywords.length ? keywords.some((k) => haystack.includes(k)) : true;
       })
       .slice(0, Math.max(1, aiCount));
+    const source = matched.length ? matched : allSubtopics.slice(0, Math.max(1, aiCount));
     const generated = source.map((sub, idx) => ({
       id: Math.random().toString(36).slice(2, 10),
       front: `${idx + 1}. ${aiPrompt}: ${sub.name}`,
       back: sub.notes || `Key explanation for ${sub.name}. Add notes for richer AI-generated cards.`
     }));
-    if (!generated.length) {
-      alert("No matching content found for that prompt. Try broader keywords.");
+    if (!allSubtopics.length) {
+      alert("No sub-topics available yet. Add subjects/topics/sub-topics first.");
       return;
     }
+    if (!matched.length) alert("No exact matches found, so I generated cards from your general revision topics instead.");
     setStacks((prev) => prev.map((stack) => stack.id === stackId ? { ...stack, cards: [...stack.cards, ...generated] } : stack));
   }
 
